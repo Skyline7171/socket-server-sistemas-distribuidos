@@ -1,4 +1,4 @@
-using System.Net.WebSockets;
+Ôªøusing System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Net;
@@ -9,16 +9,16 @@ using socket_server_sistemas_distribuidos.Models;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-// Cat·logo de productos en memoria
+// Cat√°logo de productos en memoria
 var catalogo = new List<Producto>
 {
     new Producto { Id = 1, Nombre = "Laptop ASUS TUF", Precio = 850.00m, Stock = 10 },
     new Producto { Id = 2, Nombre = "Mouse Logi G Pro", Precio = 120.00m, Stock = 25 },
-    new Producto { Id = 3, Nombre = "Teclado Mec·nico Keychron V1", Precio = 95.00m, Stock = 15 },
+    new Producto { Id = 3, Nombre = "Teclado Mec√°nico Keychron V1", Precio = 95.00m, Stock = 15 },
     new Producto { Id = 4, Nombre = "Monitor LG 27\" 144Hz", Precio = 280.00m, Stock = 8 }
 };
 
-// Habilitar WebSockets en la aplicaciÛn
+// Habilitar WebSockets en la aplicaci√≥n
 app.UseWebSockets();
 
 // Ruta del WebSocket
@@ -27,12 +27,12 @@ app.Map("/ws", async context =>
     if (context.WebSockets.IsWebSocketRequest)
     {
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-        Console.WriteLine("--> Cliente MÛvil Conectado vÌa WebSocket");
+        Console.WriteLine("--> Cliente M√≥vil Conectado v√≠a WebSocket");
 
-        // En cuanto se conecta, le mandamos el cat·logo autom·ticamente
+        // En cuanto se conecta, le mandamos el cat√°logo autom√°ticamente
         await EnviarCatalogo(webSocket, catalogo);
 
-        // Bucle para mantener la conexiÛn viva y escuchar compras
+        // Bucle para mantener la conexi√≥n viva y escuchar compras
         await EscucharCliente(webSocket, catalogo);
     }
     else
@@ -41,7 +41,7 @@ app.Map("/ws", async context =>
     }
 });
 
-// MÈtodo para enviar el cat·logo en formato JSON
+// M√©todo para enviar el cat√°logo en formato JSON
 async Task EnviarCatalogo(WebSocket socket, List<Producto> lista)
 {
     var opciones = new { accion = "CATALOGO", productos = lista };
@@ -52,7 +52,7 @@ async Task EnviarCatalogo(WebSocket socket, List<Producto> lista)
     var buffer = Encoding.UTF8.GetBytes(jsonString);
 
     await socket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
-    Console.WriteLine("--> Cat·logo enviado al cliente");
+    Console.WriteLine("--> Cat√°logo enviado al cliente");
 }
 
 // Bucle de escucha y procesamiento
@@ -94,20 +94,20 @@ async Task EscucharCliente(WebSocket socket, List<Producto> lista)
                     {
                         string correoCliente = solicitudCompra.CorreoCliente;
 
-                        // Guardar el carrito en memoria para usarlo al verificar el cÛdigo
+                        // Guardar el carrito en memoria para usarlo al verificar el c√≥digo
                         carritosPendientes[correoCliente] = solicitudCompra;
 
-                        // Generar un cÛdigo aleatorio de 4 dÌgitos y guardarlo
+                        // Generar un c√≥digo aleatorio de 4 d√≠gitos y guardarlo
                         string token = new Random().Next(1000, 9999).ToString();
                         codigosVerificacion[correoCliente] = token;
 
-                        Console.WriteLine($"--> CÛdigo generado para {correoCliente}: {token}");
+                        Console.WriteLine($"--> C√≥digo generado para {correoCliente}: {token}");
 
-                        // Enviar el correo del cÛdigo usando el mÈtodo seguro UTF-8 para evitar errores en la palabra "CÛdigo"
-                        string cuerpoCorreo = $"Tu cÛdigo de verificaciÛn para procesar tu orden es: {token}";
-                        EnviarCorreo(correoCliente, "CÛdigo de VerificaciÛn", cuerpoCorreo);
+                        // Enviar el correo del c√≥digo usando el m√©todo seguro UTF-8 para evitar errores en la palabra "C√≥digo"
+                        string cuerpoCorreo = $"Tu c√≥digo de verificaci√≥n para procesar tu orden es: {token}";
+                        EnviarCorreo(correoCliente, "C√≥digo de Verificaci√≥n", cuerpoCorreo);
 
-                        // Avisarle a la app mÛvil por el Socket que debe pedir el token
+                        // Avisarle a la app m√≥vil por el Socket que debe pedir el token
                         var respuestaTokenEnviado = new { accion = "PEDIR_CODIGO", correo = correoCliente };
                         var opcionesJson = new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
                         string jsonResp = JsonSerializer.Serialize(respuestaTokenEnviado, opcionesJson);
@@ -121,18 +121,18 @@ async Task EscucharCliente(WebSocket socket, List<Producto> lista)
                     string correoCliente = jsonDoc.RootElement.GetProperty("CorreoCliente").GetString() ?? "";
                     string codigoIngresado = jsonDoc.RootElement.GetProperty("Codigo").GetString() ?? "";
 
-                    // Verificar si el cÛdigo coincide con el que guardamos en memoria
+                    // Verificar si el c√≥digo coincide con el que guardamos en memoria
                     if (codigosVerificacion.ContainsKey(correoCliente) && codigosVerificacion[correoCliente] == codigoIngresado)
                     {
-                        Console.WriteLine($"--> °CÛdigo verificado con Èxito para {correoCliente}!");
+                        Console.WriteLine($"--> ¬°C√≥digo verificado con √©xito para {correoCliente}!");
 
-                        // CÛdigo correcto! Limpiamos el token
+                        // C√≥digo correcto! Limpiamos el token
                         codigosVerificacion.Remove(correoCliente);
 
                         // Recuperamos el carrito que guardamos en el paso 1
                         if (carritosPendientes.TryGetValue(correoCliente, out var solicitudGuardada))
                         {
-                            // Procesamos la compra real (Genera proforma, manda al celular y envÌa correo completo)
+                            // Procesamos la compra real (Genera proforma, manda al celular y env√≠a correo completo)
                             await ProcesarCompra(socket, solicitudGuardada, lista);
 
                             // Limpiamos el carrito de la memoria temporal
@@ -141,9 +141,9 @@ async Task EscucharCliente(WebSocket socket, List<Producto> lista)
                     }
                     else
                     {
-                        Console.WriteLine($"--> CÛdigo errÛneo ingresado por: {correoCliente}");
+                        Console.WriteLine($"--> C√≥digo err√≥neo ingresado por: {correoCliente}");
 
-                        // CÛdigo incorrecto, le avisamos a la app para que pinte la alerta roja
+                        // C√≥digo incorrecto, le avisamos a la app para que pinte la alerta roja
                         var respuestaError = new { accion = "CODIGO_ERRONEO" };
                         string jsonError = JsonSerializer.Serialize(respuestaError);
                         var bufferError = Encoding.UTF8.GetBytes(jsonError);
@@ -168,7 +168,7 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
         var prod = lista.FirstOrDefault(p => p.Id == item.ProductoId);
         if (prod == null)
         {
-            await EnviarErrorStock(socket, $"El producto con ID {item.ProductoId} no existe en el cat·logo.");
+            await EnviarErrorStock(socket, $"El producto con ID {item.ProductoId} no existe en el cat√°logo.");
             return;
         }
 
@@ -179,7 +179,7 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
         }
     }
 
-    // Si todo est· bien, procedemos a generar la proforma y descontar el stock real
+    // Si todo est√° bien, procedemos a generar la proforma y descontar el stock real
     StringBuilder proformaText = new StringBuilder();
     proformaText.AppendLine("========== PROFORMA DE COMPRA ==========");
     proformaText.AppendLine($"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
@@ -207,7 +207,7 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
 
     string proformaFinal = proformaText.ToString();
 
-    // Enviar la proforma a la app mÛvil por el socket mapeando correctamente las tildes literales
+    // Enviar la proforma a la app m√≥vil por el socket mapeando correctamente las tildes literales
     var respuestaApp = new { accion = "PROFORMA", reporte = proformaFinal };
 
     var opcionesJson = new JsonSerializerOptions
@@ -219,16 +219,16 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
     var bufferRespCorrecto = Encoding.UTF8.GetBytes(jsonConTildes);
 
     await socket.SendAsync(new ArraySegment<byte>(bufferRespCorrecto), WebSocketMessageType.Text, true, CancellationToken.None);
-    Console.WriteLine("--> Proforma enviada a la App mÛvil con stock actualizado");
+    Console.WriteLine("--> Proforma enviada a la App m√≥vil con stock actualizado");
 
     // Enviar correo al cliente con la proforma
     EnviarCorreo(solicitud.CorreoCliente, "Proforma de Compra (Tarea Universitaria)", proformaFinal);
 
-    // Le mandamos el cat·logo actualizado inmediatamente a la app
+    // Le mandamos el cat√°logo actualizado inmediatamente a la app
     await EnviarCatalogo(socket, lista);
 }
 
-// MÈtodo auxiliar para avisar a la App de fallos de inventario
+// M√©todo auxiliar para avisar a la App de fallos de inventario
 async Task EnviarErrorStock(WebSocket socket, string mensajeError)
 {
     var respuestaError = new { accion = "ERROR_STOCK", detalle = mensajeError };
@@ -237,7 +237,7 @@ async Task EnviarErrorStock(WebSocket socket, string mensajeError)
     Console.WriteLine($"--> Compra rechazada: {mensajeError}");
 }
 
-// MÈtodo global de correo parametrizado y protegido con UTF-8
+// M√©todo global de correo parametrizado y protegido con UTF-8
 void EnviarCorreo(string destino, string asunto, string cuerpo)
 {
     try
@@ -250,7 +250,7 @@ void EnviarCorreo(string destino, string asunto, string cuerpo)
 
         var mensaje = new MailMessage
         {
-            From = new MailAddress("sockets-sistemas-distribuidos@gmail.com", "Sistema de FacturaciÛn"),
+            From = new MailAddress("sockets-sistemas-distribuidos@gmail.com", "Sistema de Facturaci√≥n"),
             Subject = asunto,
             Body = cuerpo,
             IsBodyHtml = false,
@@ -265,7 +265,7 @@ void EnviarCorreo(string destino, string asunto, string cuerpo)
         mensaje.To.Add(destino);
         client.Send(mensaje);
 
-        Console.WriteLine($"--> Correo simulado [{asunto}] enviado con Èxito a: {destino}");
+        Console.WriteLine($"--> Correo simulado [{asunto}] enviado con √©xito a: {destino}");
     }
     catch (Exception ex)
     {
