@@ -56,7 +56,7 @@ async Task EscucharCliente(WebSocket socket, List<Producto> lista)
 {
     var buffer = new byte[1024 * 4];
 
-    // DICCIONARIOS GLOBALES AL CICLO: Mantienen los datos vivos entre mensajes del socket
+    // DICCIONARIOS GLOBALES, Mantienen los datos vivos entre mensajes del socket
     var codigosVerificacion = new Dictionary<string, string>();
     var carritosPendientes = new Dictionary<string, SolicitudCompra>();
 
@@ -83,23 +83,23 @@ async Task EscucharCliente(WebSocket socket, List<Producto> lista)
 
                 if (accion == "COMPRAR")
                 {
-                    // 1. Deserializar la solicitud completa para guardar los productos temporalmente
+                    // Deserializar la solicitud completa para guardar los productos temporalmente
                     var solicitudCompra = JsonSerializer.Deserialize<SolicitudCompra>(mensajeJson);
 
                     if (solicitudCompra != null && !string.IsNullOrEmpty(solicitudCompra.CorreoCliente))
                     {
                         string correoCliente = solicitudCompra.CorreoCliente;
 
-                        // 2. Guardar el carrito en memoria para usarlo al verificar el código
+                        // Guardar el carrito en memoria para usarlo al verificar el código
                         carritosPendientes[correoCliente] = solicitudCompra;
 
-                        // 3. Generar un código aleatorio de 4 dígitos y guardarlo
+                        // Generar un código aleatorio de 4 dígitos y guardarlo
                         string token = new Random().Next(1000, 9999).ToString();
                         codigosVerificacion[correoCliente] = token;
 
                         Console.WriteLine($"--> Código generado para {correoCliente}: {token}");
 
-                        // 4. Enviar el código al Mailtrap del cliente
+                        // Enviar el código al Mailtrap del cliente
                         using var client = new SmtpClient("sandbox.smtp.mailtrap.io", 2525)
                         {
                             Credentials = new NetworkCredential("92c6db5a8c37a3", "18e5c95bd15176"),
@@ -109,7 +109,7 @@ async Task EscucharCliente(WebSocket socket, List<Producto> lista)
                         string cuerpoCorreo = $"Tu código de verificación para procesar tu orden es: {token}";
                         client.Send("sockets-sistemas-distribuidos@gmail.com", correoCliente, "Código de Verificación", cuerpoCorreo);
 
-                        // 5. Avisarle a la app móvil por el Socket que debe pedir el token
+                        // Avisarle a la app móvil por el Socket que debe pedir el token
                         var respuestaTokenEnviado = new { accion = "PEDIR_CODIGO", correo = correoCliente };
                         string jsonResp = JsonSerializer.Serialize(respuestaTokenEnviado);
                         var bufferResp = Encoding.UTF8.GetBytes(jsonResp);
@@ -163,6 +163,24 @@ async Task EscucharCliente(WebSocket socket, List<Producto> lista)
 // Procesar la orden, generar proforma y enviar reporte
 async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Producto> lista)
 {
+    // Validar que haya stock suficiente para TODO el carrito antes de descontar
+    foreach (var item in solicitud.Items)
+    {
+        var prod = lista.FirstOrDefault(p => p.Id == item.ProductoId);
+        if (prod == null)
+        {
+            await EnviarErrorStock(socket, $"El producto con ID {item.ProductoId} no existe en el catálogo.");
+            return; // Cancelamos la operación
+        }
+
+        if (prod.Stock < item.Cantidad)
+        {
+            await EnviarErrorStock(socket, $"Stock insuficiente para '{prod.Nombre}'. Disponibles: {prod.Stock}, Solicitados: {item.Cantidad}");
+            return; // Cancelamos la operación si un solo artículo no da la base
+        }
+    }
+
+    //  Si todo está bien, procedemos a generar la proforma y descontar el stock real
     StringBuilder proformaText = new StringBuilder();
     proformaText.AppendLine("========== PROFORMA DE COMPRA ==========");
     proformaText.AppendLine($"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
@@ -173,19 +191,15 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
 
     foreach (var item in solicitud.Items)
     {
-        var prod = lista.FirstOrDefault(p => p.Id == item.ProductoId);
-        if (prod != null)
-        {
-            decimal subtotal = prod.Precio * item.Cantidad;
-            totalGeneral += subtotal;
-            proformaText.AppendLine($"{prod.Nombre} x{item.Cantidad} - ${subtotal:N2}");
+        var prod = lista.First(p => p.Id == item.ProductoId); // Usamos First porque ya validamos arriba
 
-            // Opcional: Restar del stock en memoria para hacerlo aún más real
-            if (prod.Stock >= item.Cantidad)
-            {
-                prod.Stock -= item.Cantidad;
-            }
-        }
+        prod.Stock -= item.Cantidad;
+
+        decimal subtotal = prod.Precio * item.Cantidad;
+        totalGeneral += subtotal;
+        proformaText.AppendLine($"{prod.Nombre} x{item.Cantidad} - ${subtotal:N2} (Quedan: {prod.Stock})");
+
+        Console.WriteLine($"[STOCK ACTUALIZADO] Producto: {prod.Nombre} | Nuevo Stock: {prod.Stock}");
     }
 
     proformaText.AppendLine("----------------------------------------");
@@ -194,14 +208,37 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
 
     string proformaFinal = proformaText.ToString();
 
-    // Enviar de vuelta a la app móvil por el socket
+    // Enviar la proforma a la app móvil por el socket
     var respuestaApp = new { accion = "PROFORMA", reporte = proformaFinal };
-    var bufferResp = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(respuestaApp));
-    await socket.SendAsync(new ArraySegment<byte>(bufferResp), WebSocketMessageType.Text, true, CancellationToken.None);
-    Console.WriteLine("--> Proforma enviada a la App móvil");
 
-    // Enviar copia final detallada al correo electrónico del cliente
+    var bufferResp = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(respuestaApp));
+
+    var opcionesJson = new JsonSerializerOptions
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default
+    };
+
+    string jsonConTildes = JsonSerializer.Serialize(respuestaApp, opcionesJson);
+    var bufferRespCorrecto = Encoding.UTF8.GetBytes(jsonConTildes);
+
+    await socket.SendAsync(new ArraySegment<byte>(bufferRespCorrecto), WebSocketMessageType.Text, true, CancellationToken.None);
+
+    Console.WriteLine("--> Proforma enviada a la App móvil con stock actualizado");
+
+    // Enviar correo al cliente
     EnviarCorreo(solicitud.CorreoCliente, proformaFinal);
+
+    // Le mandamos el catálogo actualizado inmediatamente a la app para que refresque la interfaz y deshabilite botones si se agotó el stock
+    await EnviarCatalogo(socket, lista);
+}
+
+// Método auxiliar para avisar a la App de fallos de inventario
+async Task EnviarErrorStock(WebSocket socket, string mensajeError)
+{
+    var respuestaError = new { accion = "ERROR_STOCK", detalle = mensajeError };
+    var buffer = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(respuestaError));
+    await socket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+    Console.WriteLine($"--> Compra rechazada: {mensajeError}");
 }
 
 void EnviarCorreo(string destino, string cuerpo)
@@ -213,7 +250,25 @@ void EnviarCorreo(string destino, string cuerpo)
             Credentials = new NetworkCredential("92c6db5a8c37a3", "18e5c95bd15176"),
             EnableSsl = true
         };
-        client.Send("sockets-sistemas-distribuidos@gmail.com", destino, "Proforma de Compra (Tarea Universitaria)", cuerpo);
+
+        // Creamos un objeto MailMessage para configurar las codificaciones
+        var mensaje = new MailMessage
+        {
+            From = new MailAddress("sockets-sistemas-distribuidos@gmail.com", "Sistema de Facturación"),
+            Subject = "Proforma de Compra (Tarea Universitaria)",
+            Body = cuerpo,
+            IsBodyHtml = false, // Como es texto plano de consola, va en false
+
+            BodyEncoding = Encoding.UTF8,
+            SubjectEncoding = Encoding.UTF8,
+            HeadersEncoding = Encoding.UTF8
+        };
+
+        mensaje.To.Add(destino);
+
+        // Enviamos el objeto configurado
+        client.Send(mensaje);
+
         Console.WriteLine($"--> Correo simulado enviado con éxito a: {destino}");
     }
     catch (Exception ex)
