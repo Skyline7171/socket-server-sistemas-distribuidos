@@ -1,0 +1,6 @@
+@socket_server_sistemas_distribuidos_HostAddress = http://localhost:5208
+
+GET {{socket_server_sistemas_distribuidos_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
