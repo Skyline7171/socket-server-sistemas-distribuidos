@@ -1,16 +1,23 @@
-# Etapa de compilaci髇
+# Etapa de compilaci贸n
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY *.csproj ./
+
+# Busca cualquier .csproj en las subcarpetas y lo copia a la ra铆z de compilaci贸n
+COPY **/*.csproj ./
 RUN dotnet restore
+
+# Copia todo el resto del c贸digo fuente
 COPY . ./
+
+# Compila buscando el proyecto de forma autom谩tica
 RUN dotnet publish -c Release -o /app
 
-# Etapa de ejecuci髇
+# Etapa de ejecuci贸n
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app .
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
-ENTRYPOINT ["dotnet", "socket-server-sistemas-distribuidos.dll"] 
-# Usa el nombre exacto de tu archivo .dll generado en vez de 'TuProyecto.dll'
+
+# IMPORTANTE: Aseg煤rate de que este nombre coincida con el nombre de tu proyecto
+ENTRYPOINT ["dotnet", "socket-server-sistemas-distribuidos.dll"]
