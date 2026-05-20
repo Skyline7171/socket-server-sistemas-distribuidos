@@ -257,7 +257,9 @@ void EnviarCorreo(string destino, string asunto, string cuerpo)
 
             BodyEncoding = Encoding.UTF8,
             SubjectEncoding = Encoding.UTF8,
-            HeadersEncoding = Encoding.UTF8
+            HeadersEncoding = Encoding.UTF8,
+
+            BodyTransferEncoding = System.Net.Mime.TransferEncoding.QuotedPrintable
         };
 
         mensaje.To.Add(destino);
