@@ -134,25 +134,12 @@ void EnviarCorreo(string destino, string cuerpo)
 {
     try
     {
-        // NOTA PARA LA PROFESORA: Configuración básica usando un servidor SMTP simulado (o Mailtrap/Gmail)
-        var smtpClient = new SmtpClient("smtp.gmail.com")
+        using var client = new SmtpClient("sandbox.smtp.mailtrap.io", 2525)
         {
-            Port = 587,
-            Credentials = new NetworkCredential("TU_CORREO@gmail.com", "TU_CONTRASEÑA_DE_APLICACION"),
-            EnableSsl = true,
+            Credentials = new NetworkCredential("92c6db5a8c37a3", "18e5c95bd15176"),
+            EnableSsl = true
         };
-
-        var mailMessage = new MailMessage
-        {
-            From = new MailAddress("TU_CORREO@gmail.com", "Sistema de Ventas Sockets"),
-            Subject = "Tu Proforma de Compra - Tarea Universitaria",
-            Body = cuerpo,
-            IsBodyHtml = false,
-        };
-
-        mailMessage.To.Add(destino);
-        // Descomenta la línea de abajo cuando pongas tus credenciales reales
-        // smtpClient.Send(mailMessage); 
+        client.Send("sockets-sistemas-distribuidos@gmail.com", destino, "Proforma de Compra (Tarea Universitaria)", cuerpo);
         Console.WriteLine($"--> Correo simulado enviado con éxito a: {destino}");
     }
     catch (Exception ex)
