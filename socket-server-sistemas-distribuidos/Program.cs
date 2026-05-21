@@ -178,6 +178,11 @@ async Task EscucharCliente(WebSocket socket, List<Producto> lista)
 // Procesar la orden, generar proforma y enviar reporte
 async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Producto> lista)
 {
+    // Obtener la hora actual de Managua, Nicaragua
+    DateTime horaUtc = DateTime.UtcNow;
+    TimeZoneInfo zonaNicaragua = TimeZoneInfo.FindSystemTimeZoneById("Central America Standard Time");
+    DateTime horaNicaragua = TimeZoneInfo.ConvertTimeFromUtc(horaUtc, zonaNicaragua);
+
     // Validar que haya stock suficiente para TODO el carrito antes de descontar
     foreach (var item in solicitud.Items)
     {
@@ -198,7 +203,7 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
     // --- MANTENEMOS LA PROFORMA EN TEXTO PLANO PARA EL WEBSOCKET ---
     StringBuilder proformaText = new StringBuilder();
     proformaText.AppendLine("========== PROFORMA DE COMPRA ==========");
-    proformaText.AppendLine($"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+    proformaText.AppendLine($"Fecha: {horaNicaragua:dd/MM/yyyy HH:mm:ss}");
     proformaText.AppendLine($"Cliente: {solicitud.CorreoCliente}");
     proformaText.AppendLine("----------------------------------------");
 
@@ -209,7 +214,7 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
     proformaHtml.Append("<p style='text-align: center; color: #64748b; font-size: 13px; margin-top: 0; margin-bottom: 24px;'>Comprobante Informativo de Pedido</p>");
 
     proformaHtml.Append("<div style='background-color: #f8fafc; border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; font-size: 14px; line-height: 1.5; border: 1px solid #f1f5f9;'>");
-    proformaHtml.Append($"<strong>Fecha de Emisión:</strong> {DateTime.Now:dd/MM/yyyy HH:mm:ss}<br/>");
+    proformaHtml.Append($"<strong>Fecha de Emisión:</strong> {horaNicaragua:dd/MM/yyyy HH:mm:ss}<br/>");
     proformaHtml.Append($"<strong>Cliente:</strong> <span style='color: #2563eb;'>{solicitud.CorreoCliente}</span>");
     proformaHtml.Append("</div>");
 
