@@ -195,12 +195,33 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
         }
     }
 
-    // Si todo está bien, procedemos a generar la proforma y descontar el stock real
+    // --- MANTENEMOS LA PROFORMA EN TEXTO PLANO PARA EL WEBSOCKET ---
     StringBuilder proformaText = new StringBuilder();
     proformaText.AppendLine("========== PROFORMA DE COMPRA ==========");
     proformaText.AppendLine($"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
     proformaText.AppendLine($"Cliente: {solicitud.CorreoCliente}");
     proformaText.AppendLine("----------------------------------------");
+
+    // --- GENERADOR DE PROFORMA HTML CORPORATIVA PARA EL GMAIL VIA BREVO ---
+    StringBuilder proformaHtml = new StringBuilder();
+    proformaHtml.Append("<div style='font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; max-width: 550px; margin: 20px auto; border: 1px solid #e2e8f0; padding: 28px; border-radius: 16px; color: #1e293b; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);'>");
+    proformaHtml.Append("<h2 style='text-align: center; color: #0f172a; font-size: 24px; font-weight: 800; margin-top: 0; margin-bottom: 6px; letter-spacing: -0.5px;'>PROFORMA DE COMPRA</h2>");
+    proformaHtml.Append("<p style='text-align: center; color: #64748b; font-size: 13px; margin-top: 0; margin-bottom: 24px;'>Comprobante Informativo de Pedido</p>");
+
+    proformaHtml.Append("<div style='background-color: #f8fafc; border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; font-size: 14px; line-height: 1.5; border: 1px solid #f1f5f9;'>");
+    proformaHtml.Append($"<strong>Fecha de Emisión:</strong> {DateTime.Now:dd/MM/yyyy HH:mm:ss}<br/>");
+    proformaHtml.Append($"<strong>Cliente:</strong> <span style='color: #2563eb;'>{solicitud.CorreoCliente}</span>");
+    proformaHtml.Append("</div>");
+
+    proformaHtml.Append("<table style='width: 100%; border-collapse: collapse; font-size: 14px; text-align: left;'>");
+    proformaHtml.Append("<thead>");
+    proformaHtml.Append("<tr style='border-bottom: 2px solid #edf2f7; color: #64748b; font-weight: 600;'>");
+    proformaHtml.Append("<th style='padding-bottom: 10px;'>Descripción</th>");
+    proformaHtml.Append("<th style='padding-bottom: 10px; text-align: center; width: 60px;'>Cant.</th>");
+    proformaHtml.Append("<th style='padding-bottom: 10px; text-align: right; width: 100px;'>Subtotal</th>");
+    proformaHtml.Append("</tr>");
+    proformaHtml.Append("</thead>");
+    proformaHtml.Append("<tbody>");
 
     decimal totalGeneral = 0;
 
@@ -212,18 +233,41 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
 
         decimal subtotal = prod.Precio * item.Cantidad;
         totalGeneral += subtotal;
+
+        // Adjuntamos a la versión en texto plano
         proformaText.AppendLine($"{prod.Nombre} x{item.Cantidad} - ${subtotal:N2}");
+
+        // Adjuntamos la fila estructurada en la tabla HTML con bordes sutiles divisores
+        proformaHtml.Append("<tr style='border-bottom: 1px solid #f1f5f9;'>");
+        proformaHtml.Append($"<td style='padding: 12px 0; color: #334155; font-weight: 500;'>{prod.Nombre}</td>");
+        proformaHtml.Append($"<td style='padding: 12px 0; text-align: center; color: #64748b;'>{item.Cantidad}</td>");
+        proformaHtml.Append($"<td style='padding: 12px 0; text-align: right; color: #0f172a; font-weight: 600;'>${subtotal:N2}</td>");
+        proformaHtml.Append("</tr>");
 
         Console.WriteLine($"[STOCK ACTUALIZADO] Producto: {prod.Nombre} | Nuevo Stock: {prod.Stock}");
     }
 
+    // Cierre de la tabla HTML
+    proformaHtml.Append("</tbody>");
+    proformaHtml.Append("</table>");
+
+    proformaHtml.Append("<div style='margin-top: 24px; padding-top: 18px; border-top: 2px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center;'>");
+    proformaHtml.Append("<span style='font-size: 16px; font-weight: 700; color: #1e293b;'>TOTAL A PAGAR:</span>");
+    proformaHtml.Append($"<span style='font-size: 22px; font-weight: 800; color: #2563eb;'>${totalGeneral:N2}</span>");
+    proformaHtml.Append("</div>");
+
+    proformaHtml.Append("<p style='text-align: center; font-size: 11px; color: #94a3b8; margin-top: 32px; border-top: 1px solid #f1f5f9; padding-top: 12px;'>Este es un correo automático generado por el Sistema Distribuidor Web API. Por favor no responder.</p>");
+    proformaHtml.Append("</div>");
+
+    // Finalizar la estructura de texto plano
     proformaText.AppendLine("----------------------------------------");
     proformaText.AppendLine($"TOTAL A PAGAR: ${totalGeneral:N2}");
     proformaText.AppendLine("========================================");
 
     string proformaFinal = proformaText.ToString();
+    string proformaFinalHtml = proformaHtml.ToString();
 
-    // Enviar la proforma a la app móvil por el socket mapeando correctamente las tildes literales
+    // Enviar la proforma en texto plano a la app móvil por el socket mapeando correctamente las tildes literales
     var respuestaApp = new { accion = "PROFORMA", reporte = proformaFinal };
 
     var opcionesJson = new JsonSerializerOptions
@@ -237,8 +281,8 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
     await socket.SendAsync(new ArraySegment<byte>(bufferRespCorrecto), WebSocketMessageType.Text, true, CancellationToken.None);
     Console.WriteLine("--> Proforma enviada a la App móvil con stock actualizado");
 
-    // Enviar correo al cliente con la proforma
-    EnviarCorreo(solicitud.CorreoCliente, "Proforma de Compra (Tarea Universitaria)", proformaFinal);
+    // Enviar correo al cliente utilizando la estructura HTML refinada
+    EnviarCorreo(solicitud.CorreoCliente, "Proforma de Compra (Tarea Universitaria)", proformaFinalHtml);
 
     // Le mandamos el catálogo actualizado inmediatamente a la app
     await EnviarCatalogo(socket, lista);
