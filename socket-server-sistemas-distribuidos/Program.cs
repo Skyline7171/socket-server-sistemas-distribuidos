@@ -253,76 +253,52 @@ async Task EnviarErrorStock(WebSocket socket, string mensajeError)
     Console.WriteLine($"--> Compra rechazada: {mensajeError}");
 }
 
-void EnviarCorreo(string destino, string asunto, string cuerpo)
+void EnviarCorreo(string destino, string asunto, string cuerpoHtml)
 {
     try
     {
-        // Intentamos leer las variables de entorno de Render o Visual Studio launchSettings
-        string? emailUser = Environment.GetEnvironmentVariable("EMAIL_USER");
-        string? emailPass = Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
+        // Leemos la API Key desde el entorno protegido (Render o Visual Studio)
+        string? apiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
 
-        string smtpHost;
-        int smtpPort;
-        string smtpUser;
-        string smtpPassword;
-
-        // Determinamos el entorno de ejecución de forma dinámica
-        if (!string.IsNullOrEmpty(emailUser) && !string.IsNullOrEmpty(emailPass))
+        if (string.IsNullOrEmpty(apiKey))
         {
-            // Credenciales oficiales de Gmail en producción
-            smtpHost = "smtp.gmail.com";
-            smtpPort = 587;
-            smtpUser = emailUser;
-            smtpPassword = emailPass;
+            Console.WriteLine("--> [ERROR] No se encontró la variable de entorno BREVO_API_KEY.");
+            return;
+        }
+
+        // Instanciamos el cliente Web (Puerto 443 HTTPS - Libre en Render)
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("api-key", apiKey);
+
+        // Construimos el payload JSON oficial requerido por Brevo
+        var payload = new
+        {
+            sender = new { name = "Sistema de Facturación", email = "xpolargeist007x@gmail.com" }, // Correo registrado en Brevo
+            to = new[] { new { email = destino } },
+            subject = asunto,
+            htmlContent = cuerpoHtml // Brevo interpreta esto como HTML real directamente
+        };
+
+        string jsonPayload = JsonSerializer.Serialize(payload);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        // 4. Despachamos la petición POST
+        Console.WriteLine("--> Enviando petición web de correo a Brevo...");
+        var response = client.PostAsync("https://api.brevo.com/v3/smtp/email", content).Result;
+
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine($"--> [ÉXITO-WEB] Correo real enviado exitosamente a: {destino} saltando el firewall.");
         }
         else
         {
-            // Respaldo automático al entorno de pruebas de Mailtrap
-            smtpHost = "sandbox.smtp.mailtrap.io";
-            smtpPort = 2525;
-            smtpUser = "92c6db5a8c37a3";
-            smtpPassword = "18e5c95bd15176";
-        }
-
-        // Configuración segura del cliente SMTP
-        using var client = new SmtpClient(smtpHost, smtpPort)
-        {
-            Credentials = new NetworkCredential(smtpUser, smtpPassword),
-            EnableSsl = true // Requerido tanto por Mailtrap como obligatoriamente por Gmail (TLS)
-        };
-
-        // Construcción del mensaje con soporte enriquecido (HTML)
-        var mensaje = new MailMessage
-        {
-            // El remitente debe coincidir con el usuario autenticado de Gmail para evitar rebotes por SPAM
-            From = new MailAddress(smtpUser, "Sistema de Facturación"),
-            Subject = asunto,
-            Body = cuerpo,
-
-            // Cambiado a TRUE para que puedas enviar el código llamativo y la proforma tabulada en HTML
-            IsBodyHtml = true,
-
-            BodyEncoding = Encoding.UTF8,
-            SubjectEncoding = Encoding.UTF8,
-            HeadersEncoding = Encoding.UTF8,
-            BodyTransferEncoding = System.Net.Mime.TransferEncoding.QuotedPrintable
-        };
-
-        mensaje.To.Add(destino);
-        client.Send(mensaje);
-
-        if (smtpHost == "smtp.gmail.com")
-        {
-            Console.WriteLine($"--> [PRODUCCIÓN] Correo real [{asunto}] enviado con éxito vía Gmail a: {destino}");
-        }
-        else
-        {
-            Console.WriteLine($"--> [DESARROLLO] Correo simulado [{asunto}] enviado con éxito a Mailtrap: {destino}");
+            string errorDetalle = response.Content.ReadAsStringAsync().Result;
+            Console.WriteLine($"--> Error devuelto por Brevo: {response.StatusCode} - {errorDetalle}");
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error crítico al enviar correo: {ex.Message}");
+        Console.WriteLine($"Error crítico en el cliente HTTP: {ex.Message}");
     }
 }
 
