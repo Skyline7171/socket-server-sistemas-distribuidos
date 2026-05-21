@@ -251,9 +251,11 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
     proformaHtml.Append("</tbody>");
     proformaHtml.Append("</table>");
 
-    proformaHtml.Append("<div style='margin-top: 24px; padding-top: 18px; border-top: 2px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center;'>");
-    proformaHtml.Append("<span style='font-size: 16px; font-weight: 700; color: #1e293b;'>TOTAL A PAGAR:</span>");
-    proformaHtml.Append($"<span style='font-size: 22px; font-weight: 800; color: #2563eb;'>${totalGeneral:N2}</span>");
+    // --- CORRECCIÓN AQUÍ: Cambiamos Flexbox por una estructura compatible con correo electrónico (float y clear) ---
+    proformaHtml.Append("<div style='margin-top: 24px; padding-top: 18px; border-top: 2px dashed #e2e8f0; line-height: 28px;'>");
+    proformaHtml.Append("<span style='font-size: 16px; font-weight: 700; color: #1e293b; float: left;'>TOTAL A PAGAR:</span>");
+    proformaHtml.Append($"<span style='font-size: 22px; font-weight: 800; color: #2563eb; float: right;'>${totalGeneral:N2}</span>");
+    proformaHtml.Append("<div style='clear: both;'></div>"); // Evita que se desborde el contenedor con los floats
     proformaHtml.Append("</div>");
 
     proformaHtml.Append("<p style='text-align: center; font-size: 11px; color: #94a3b8; margin-top: 32px; border-top: 1px solid #f1f5f9; padding-top: 12px;'>Este es un correo automático generado por el Sistema Distribuidor Web API. Por favor no responder.</p>");
