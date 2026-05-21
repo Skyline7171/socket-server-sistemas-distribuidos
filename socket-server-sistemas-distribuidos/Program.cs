@@ -12,10 +12,26 @@ var app = builder.Build();
 // Catálogo de productos en memoria
 var catalogo = new List<Producto>
 {
-    new Producto { Id = 1, Nombre = "Laptop ASUS TUF", Precio = 850.00m, Stock = 10 },
-    new Producto { Id = 2, Nombre = "Mouse Logi G Pro", Precio = 120.00m, Stock = 25 },
-    new Producto { Id = 3, Nombre = "Teclado Mecánico Keychron V1", Precio = 95.00m, Stock = 15 },
-    new Producto { Id = 4, Nombre = "Monitor LG 27\" 144Hz", Precio = 280.00m, Stock = 8 }
+    new Producto { Id = 1, Nombre = "Laptop ASUS TUF Gaming", Precio = 850.00m, Stock = 10, ImagenUrl = "https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 2, Nombre = "Mouse Logi G Pro Wireless", Precio = 120.00m, Stock = 25, ImagenUrl = "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 3, Nombre = "Teclado Mecánico Keychron V1", Precio = 95.00m, Stock = 15, ImagenUrl = "https://images.unsplash.com/photo-1595225476474-87563907a212?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 4, Nombre = "Monitor LG 27\" UltraGear 144Hz", Precio = 280.00m, Stock = 8, ImagenUrl = "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 5, Nombre = "Auriculares HyperX Cloud II", Precio = 89.99m, Stock = 30, ImagenUrl = "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 6, Nombre = "Tarjeta Gráfica RTX 4070 Ti", Precio = 799.00m, Stock = 5, ImagenUrl = "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 7, Nombre = "Procesador AMD Ryzen 7 7800X3D", Precio = 389.00m, Stock = 12, ImagenUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 8, Nombre = "Memoria RAM Corsair Vengeance 32GB DDR5", Precio = 115.00m, Stock = 20, ImagenUrl = "https://images.unsplash.com/photo-1541029071515-84cc54f84dc5?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 9, Nombre = "Disco SSD NVMe WD Black 1TB", Precio = 85.50m, Stock = 18, ImagenUrl = "https://images.unsplash.com/photo-1563206767-5b18f218e8de?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 10, Nombre = "Fuente de Poder EVGA 750W Gold", Precio = 105.00m, Stock = 14, ImagenUrl = "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 11, Nombre = "Gabinete NZXT H5 Flow", Precio = 94.99m, Stock = 7, ImagenUrl = "https://images.unsplash.com/photo-1624705002806-5d72df19c3ad?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 12, Nombre = "Refrigeración Líquida Kraken 240", Precio = 139.99m, Stock = 21, ImagenUrl = "https://images.unsplash.com/photo-1600541519463-fde0b191078f?w=500&auto=format&fit=crop&q=60" }, // Producto agotado para pruebas
+    new Producto { Id = 13, Nombre = "Silla Gamer Secretlab Titan", Precio = 450.00m, Stock = 4, ImagenUrl = "https://images.unsplash.com/photo-1598550476439-6847785fce6e?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 14, Nombre = "Micrófono Shure MV7 USB", Precio = 249.00m, Stock = 9, ImagenUrl = "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 15, Nombre = "Cámara Web Logitech C920 HD", Precio = 79.99m, Stock = 22, ImagenUrl = "https://images.unsplash.com/photo-1603184017968-953f59cd2e37?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 16, Nombre = "Pad Mouse Razer Strider XXL", Precio = 49.99m, Stock = 40, ImagenUrl = "https://images.unsplash.com/photo-1632292224971-0d45778bd364?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 17, Nombre = "Sintonizador Elgato Stream Deck MK2", Precio = 149.99m, Stock = 11, ImagenUrl = "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 18, Nombre = "Router ASUS ROG Rapture Wi-Fi 6", Precio = 299.00m, Stock = 6, ImagenUrl = "https://images.unsplash.com/photo-1631553127988-3486337a2886?w=500&auto=format&fit=crop&q=60" },
+    new Producto { Id = 19, Nombre = "Consola Nintendo Switch OLED", Precio = 349.99m, Stock = 3, ImagenUrl = "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=500&auto=format&fit=crop&q=60" }, // Producto agotado para pruebas
+    new Producto { Id = 20, Nombre = "Mando Xbox Wireless Carbon Black", Precio = 59.99m, Stock = 35, ImagenUrl = "https://images.unsplash.com/photo-1600080972464-875f0a0ea26b?w=500&auto=format&fit=crop&q=60" }
 };
 
 // Habilitar WebSockets en la aplicación
