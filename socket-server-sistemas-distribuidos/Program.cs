@@ -29,7 +29,7 @@ var catalogo = new List<Producto>
     new Producto { Id = 15, Nombre = "Cámara Web Logitech C920 HD", Precio = 79.99m, Stock = 22, ImagenUrl = "https://images.unsplash.com/photo-1626581795188-8efb9a00eeec?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" },
     new Producto { Id = 16, Nombre = "Pad Mouse Razer Strider XXL", Precio = 49.99m, Stock = 40, ImagenUrl = "https://assets2.razerzone.com/images/pnx.assets/2a3cd3ef9fdef900c6b3fff960863f41/razer-strider-stitched-500x500.jpg" },
     new Producto { Id = 17, Nombre = "Sintonizador Elgato Stream Deck MK2", Precio = 149.99m, Stock = 11, ImagenUrl = "https://media.ldlc.com/bo/images/fiches/carte%20acquisition/Elgato/Stream_Deck_MK2/1.jpg" },
-    new Producto { Id = 18, Nombre = "Router ASUS ROG Rapture Wi-Fi 6", Precio = 299.00m, Stock = 6, ImagenUrl = "https://cdn.mos.cms.futurecdn.net/qJNfzspoxuQc54HM8hB9wG.jpg" },
+    new Producto { Id = 18, Nombre = "Router ASUS ROG Rapture Wi-Fi 6", Precio = 299.00m, Stock = 6, ImagenUrl = "https://m.media-amazon.com/images/I/615qUbfxukL.jpg" },
     new Producto { Id = 19, Nombre = "Consola Nintendo Switch OLED", Precio = 349.99m, Stock = 3, ImagenUrl = "https://images.unsplash.com/photo-1715081406784-852ba61e4158?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" },
     new Producto { Id = 20, Nombre = "Mando Xbox Wireless Carbon Black", Precio = 59.99m, Stock = 35, ImagenUrl = "https://m.media-amazon.com/images/I/615-Ww2D6tL.jpg" }
 };
@@ -212,7 +212,7 @@ async Task ProcesarCompra(WebSocket socket, SolicitudCompra solicitud, List<Prod
 
         decimal subtotal = prod.Precio * item.Cantidad;
         totalGeneral += subtotal;
-        proformaText.AppendLine($"{prod.Nombre} x{item.Cantidad} - ${subtotal:N2} (Quedan: {prod.Stock})");
+        proformaText.AppendLine($"{prod.Nombre} x{item.Cantidad} - ${subtotal:N2}");
 
         Console.WriteLine($"[STOCK ACTUALIZADO] Producto: {prod.Nombre} | Nuevo Stock: {prod.Stock}");
     }
@@ -253,39 +253,76 @@ async Task EnviarErrorStock(WebSocket socket, string mensajeError)
     Console.WriteLine($"--> Compra rechazada: {mensajeError}");
 }
 
-// Método global de correo parametrizado y protegido con UTF-8
 void EnviarCorreo(string destino, string asunto, string cuerpo)
 {
     try
     {
-        using var client = new SmtpClient("sandbox.smtp.mailtrap.io", 2525)
+        // Intentamos leer las variables de entorno de Render o Visual Studio launchSettings
+        string? emailUser = Environment.GetEnvironmentVariable("EMAIL_USER");
+        string? emailPass = Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
+
+        string smtpHost;
+        int smtpPort;
+        string smtpUser;
+        string smtpPassword;
+
+        // Determinamos el entorno de ejecución de forma dinámica
+        if (!string.IsNullOrEmpty(emailUser) && !string.IsNullOrEmpty(emailPass))
         {
-            Credentials = new NetworkCredential("92c6db5a8c37a3", "18e5c95bd15176"),
-            EnableSsl = true
+            // Credenciales oficiales de Gmail en producción
+            smtpHost = "smtp.gmail.com";
+            smtpPort = 587;
+            smtpUser = emailUser;
+            smtpPassword = emailPass;
+        }
+        else
+        {
+            // Respaldo automático al entorno de pruebas de Mailtrap
+            smtpHost = "sandbox.smtp.mailtrap.io";
+            smtpPort = 2525;
+            smtpUser = "92c6db5a8c37a3";
+            smtpPassword = "18e5c95bd15176";
+        }
+
+        // Configuración segura del cliente SMTP
+        using var client = new SmtpClient(smtpHost, smtpPort)
+        {
+            Credentials = new NetworkCredential(smtpUser, smtpPassword),
+            EnableSsl = true // Requerido tanto por Mailtrap como obligatoriamente por Gmail (TLS)
         };
 
+        // Construcción del mensaje con soporte enriquecido (HTML)
         var mensaje = new MailMessage
         {
-            From = new MailAddress("sockets-sistemas-distribuidos@gmail.com", "Sistema de Facturación"),
+            // El remitente debe coincidir con el usuario autenticado de Gmail para evitar rebotes por SPAM
+            From = new MailAddress(smtpUser, "Sistema de Facturación"),
             Subject = asunto,
             Body = cuerpo,
-            IsBodyHtml = false,
+
+            // Cambiado a TRUE para que puedas enviar el código llamativo y la proforma tabulada en HTML
+            IsBodyHtml = true,
 
             BodyEncoding = Encoding.UTF8,
             SubjectEncoding = Encoding.UTF8,
             HeadersEncoding = Encoding.UTF8,
-
             BodyTransferEncoding = System.Net.Mime.TransferEncoding.QuotedPrintable
         };
 
         mensaje.To.Add(destino);
         client.Send(mensaje);
 
-        Console.WriteLine($"--> Correo simulado [{asunto}] enviado con éxito a: {destino}");
+        if (smtpHost == "smtp.gmail.com")
+        {
+            Console.WriteLine($"--> [PRODUCCIÓN] Correo real [{asunto}] enviado con éxito vía Gmail a: {destino}");
+        }
+        else
+        {
+            Console.WriteLine($"--> [DESARROLLO] Correo simulado [{asunto}] enviado con éxito a Mailtrap: {destino}");
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error al enviar correo: {ex.Message}");
+        Console.WriteLine($"Error crítico al enviar correo: {ex.Message}");
     }
 }
 
